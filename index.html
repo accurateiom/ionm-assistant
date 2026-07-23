@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IONM Troubleshooting Assistant</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: rgba(255,255,255,0.08);
+    --border-accent: rgba(56,189,248,0.3);
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --text-dim: #484f58;
+    --accent: #38bdf8;
+    --accent-dim: rgba(56,189,248,0.12);
+    --accent-glow: rgba(56,189,248,0.15);
+    --green: #3fb950;
+    --green-dim: rgba(63,185,80,0.12);
+    --amber: #e3b341;
+    --amber-dim: rgba(227,179,65,0.12);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.12);
+    --purple: #a5b4fc;
+    --purple-dim: rgba(165,180,252,0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Top bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .topbar-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .topbar-icon svg { width: 18px; height: 18px; }
+
+  .topbar-title { 
+    font-size: 14px; 
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  .topbar-sub { 
+    font-size: 11px; 
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .topbar-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--green);
+    background: var(--green-dim);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(63,185,80,0.2);
+  }
+
+  .topbar-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Markdown tables */
+  .md-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 12.5px;
+  }
+
+  .md-table th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: left;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .md-table td {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .md-table tr:nth-child(even) td {
+    background: rgba(255,255,255,0.02);
+  }
+
+  /* Quick buttons */
+  .quick-bar {
+    padding: 10px 16px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+
+  .quick-bar::-webkit-scrollbar { display: none; }
+
+  .quick-btn {
+    white-space: nowrap;
+    font-size: 11.5px;
+    font-family: var(--font);
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .quick-btn:hover { 
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--border-accent);
+  }
+
+  .quick-btn.urgent {
+    border-color: rgba(248,81,73,0.35);
+    color: #ffa8a3;
+  }
+
+  .quick-btn.urgent:hover {
+    background: var(--red-dim);
+    border-color: rgba(248,81,73,0.6);
+    color: #ffbbb8;
+  }
+
+  /* Copy button on assistant messages */
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 10.5px;
+    font-family: var(--font);
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover {
+    color: var(--text-muted);
+    border-color: rgba(255,255,255,0.15);
+    background: var(--surface2);
+  }
+
+  .copy-btn svg { width: 11px; height: 11px; }
+
+  /* In-chat follow-up question chips */
+  .followup-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .followup-question {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 2px;
+  }
+
+  .followup-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .followup-chip {
+    font-size: 12px;
+    font-family: var(--font);
+    padding: 6px 13px;
+    border-radius: 20px;
+    border: 1px solid var(--border-accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .followup-chip:hover {
+    background: rgba(56,189,248,0.22);
+    color: #7dd3fc;
+  }
+
+  .followup-chip.used {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* Messages */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Welcome state */
+  .welcome {
+    margin: auto;
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 440px;
+  }
+
+  .welcome-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--accent-dim);
+    border: 1px solid var(--border-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+
+  .welcome-icon svg { width: 28px; height: 28px; }
+
+  .welcome h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .welcome p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .welcome-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .welcome-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .welcome-card:hover {
+    background: var(--surface2);
+    border-color: var(--border-accent);
+  }
+
+  .welcome-card-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .welcome-card-label {
+    font-size: 12.5px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  /* Message bubbles */
+  .msg {
+    display: flex;
+    gap: 10px;
+    max-width: 100%;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  .msg.user .msg-avatar {
+    background: var(--purple-dim);
+    border: 1px solid rgba(165,180,252,0.2);
+    color: var(--purple);
+  }
+
+  .msg.assistant .msg-avatar {
+    background: var(--accent-dim);
+    border: 1px solid var(--border-accent);
+    color: var(--accent);
+  }
+
+  .msg-avatar svg { width: 14px; height: 14px; }
+
+  .msg-body {
+    max-width: calc(100% - 40px);
+  }
+
+  .msg-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+
+  .msg.user .msg-label { text-align: right; }
+
+  .msg-bubble {
+    font-size: 13.5px;
+    line-height: 1.7;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top-right-radius: 3px;
+    color: var(--text);
+  }
+
+  .msg.assistant .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top-left-radius: 3px;
+    color: var(--text);
+  }
+
+  /* Markdown-ish rendering */
+  .msg-bubble strong { color: var(--text); font-weight: 600; }
+
+  .msg-bubble .md-h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 12px 0 4px;
+    letter-spacing: -0.01em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+
+  .msg-bubble .md-h3 {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 10px 0 3px;
+    letter-spacing: 0.01em;
+  }
+  
+  .msg-bubble .alert-box {
+    background: var(--red-dim);
+    border: 1px solid rgba(248,81,73,0.25);
+    border-left: 3px solid var(--red);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin: 10px 0;
+    font-size: 12.5px;
+    color: #ffa8a3;
+  }
+
+  .msg-bubble .info-box {
+    background: var(--accent-dim);
+    border: 1px solid var(--border-accent);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin: 10px 0;
+    font-size: 12.5px;
+    color: #93d8f8;
+  }
+
+  .msg-bubble .step-list {
+    list-style: none;
+    margin: 8px 0;
+  }
+
+  .msg-bubble .step-list li {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .msg-bubble .step-list li .step-num {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid var(--border-accent);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .msg-bubble code {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--amber);
+  }
+
+  .contact-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .contact-chip {
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    cursor: default;
+  }
+
+  .contact-chip.urgent {
+    border-color: rgba(248,81,73,0.3);
+    background: var(--red-dim);
+    color: #ffa8a3;
+  }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-top-left-radius: 3px;
+    width: fit-content;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    animation: typing 1.4s infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 12px 16px 16px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 8px 8px 14px;
+    transition: border-color 0.15s;
+  }
+
+  .input-row:focus-within {
+    border-color: var(--border-accent);
+  }
+
+  #user-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font);
+    font-size: 13.5px;
+    color: var(--text);
+    resize: none;
+    line-height: 1.5;
+    max-height: 160px;
+    min-height: 22px;
+  }
+
+  #user-input::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    opacity: 0.4;
+  }
+
+  .send-btn.active { opacity: 1; }
+  .send-btn.active:hover { background: #7dd3fc; }
+  .send-btn svg { width: 14px; height: 14px; }
+
+  .input-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 7px;
+    padding: 0 2px;
+  }
+
+  .footer-note {
+    font-size: 10.5px;
+    color: var(--text-dim);
+  }
+
+  .footer-note a { color: var(--accent); text-decoration: none; }
+  .footer-note a:hover { text-decoration: underline; }
+
+  .clear-btn {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffa8a3;
+    background: var(--red-dim);
+    border: 1px solid rgba(248,81,73,0.35);
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: var(--font);
+    padding: 4px 11px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .clear-btn:hover {
+    color: #fff;
+    border-color: rgba(248,81,73,0.7);
+    background: rgba(248,81,73,0.25);
+  }
+
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-icon" style="background:transparent; border:none; padding:0; width:56px; height:56px; flex-shrink:0;">
+    <img src="data:image/png;base64,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" 
+         style="width:56px; height:56px; object-fit:contain;" alt="Accurate Neuromonitoring" />
+  </div>
+  <div>
+    <div class="topbar-title">IONM Troubleshooting Assistant</div>
+    <div class="topbar-sub">
+      <a href="https://forms.office.com/r/Q28M73tybR" target="_blank" style="color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:11px;height:11px;flex-shrink:0;"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"/><path d="M17 3l4 4-9 9H8v-4l9-9z"/></svg>
+        Provide feedback on accuracy and usefulness
+      </a>
+    </div>
+  </div>
+  <div class="topbar-badge">Live</div>
+</div>
+
+<!-- Quick access buttons -->
+<div class="quick-bar">
+  <button class="quick-btn urgent" onclick="startGuided('mep')">MEP issue</button>
+  <button class="quick-btn urgent" onclick="startGuided('signal')">Signal change</button>
+  <button class="quick-btn urgent" onclick="startGuided('noise')">Noise / artifact</button>
+  <button class="quick-btn" onclick="startGuided('ssep')">SSEP issue</button>
+  <button class="quick-btn" onclick="startGuided('tof')">TOF issue</button>
+  <button class="quick-btn" onclick="startGuided('software')">CSS software</button>
+  <button class="quick-btn" onclick="startGuided('connectivity')">USMON / TeamViewer</button>
+  <button class="quick-btn" onclick="startGuided('escalation')">Escalation / contacts</button>
+  <button class="quick-btn" onclick="startGuided('eventlog')">Write event log note</button>
+  <button class="quick-btn" onclick="startGuided('anesthesia')">Anesthesia effects</button>
+  <button class="quick-btn" onclick="startGuided('parameters')">Stim parameters</button>
+  <button class="quick-btn" onclick="startGuided('baer')">BAER issue</button>
+  <button class="quick-btn" onclick="startGuided('emg')">frEMG / EMG</button>
+</div>
+
+<!-- Messages -->
+<div class="messages" id="messages">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5">
+        <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+        <path d="M12 2a10 10 0 0 1 10 10"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </div>
+    <h2>IONM Troubleshooting Assistant</h2>
+    <p>Type your issue, or tap a topic above — the assistant will ask one quick follow-up to zero in on the right answer for your exact situation.</p>
+    <div class="welcome-cards">
+      <div class="welcome-card" onclick="startGuided('mep')">
+        <div class="welcome-card-tag" style="color:#f85149">🔴 MEP</div>
+        <div class="welcome-card-label">MEP issue — guide me to the fix</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('signal')">
+        <div class="welcome-card-tag" style="color:#f85149">🔴 Signal</div>
+        <div class="welcome-card-label">Signal changed during the case</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('ssep')">
+        <div class="welcome-card-tag">SSEP</div>
+        <div class="welcome-card-label">SSEP problem — narrow it down</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('emg')">
+        <div class="welcome-card-tag" style="color:#f85149">🔴 EMG</div>
+        <div class="welcome-card-label">frEMG burst or train activity</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('tof')">
+        <div class="welcome-card-tag">TOF</div>
+        <div class="welcome-card-label">TOF issue or block interpretation</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('noise')">
+        <div class="welcome-card-tag">Noise</div>
+        <div class="welcome-card-label">Noise or artifact troubleshooting</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('baer')">
+        <div class="welcome-card-tag">BAER</div>
+        <div class="welcome-card-label">BAER / ABR issue or setup</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('anesthesia')">
+        <div class="welcome-card-tag">📚 Literature</div>
+        <div class="welcome-card-label">Anesthesia effects on my signals</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('parameters')">
+        <div class="welcome-card-tag">Parameters</div>
+        <div class="welcome-card-label">Stim &amp; recording parameters</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('software')">
+        <div class="welcome-card-tag">CSS Software</div>
+        <div class="welcome-card-label">Cascade Surgical Studio issue</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('eventlog')">
+        <div class="welcome-card-tag">Event Log</div>
+        <div class="welcome-card-label">Help me write an event log note</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('escalation')">
+        <div class="welcome-card-tag">Escalation</div>
+        <div class="welcome-card-label">How to request remote support</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+  <div class="input-row">
+    <textarea id="user-input" placeholder="Describe the issue or ask a question..." rows="1"></textarea>
+    <button class="send-btn" id="send-btn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+  <div class="input-footer">
+    <span class="footer-note">
+      <a href="https://forms.office.com/r/uvamqrpWiU" target="_blank">SUBMIT A REMOTE SUPPORT REQUEST</a>
+      &nbsp;&nbsp;
+      <a href="mailto:remotesupport@accurateiom.com" style="display:inline-flex;align-items:center;gap:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:12px;height:12px;flex-shrink:0;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+        remotesupport@accurateiom.com
+      </a>
+    </span>
+    <button class="clear-btn" onclick="clearChat()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Clear chat
+    </button>
+  </div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `You are **Sherlock Ohms**, an expert IONM troubleshooting assistant for field technologists at Accurate Neuromonitoring, specializing in Cadwell Cascade Pro and Cascade Classic systems.
+
+You draw on two integrated knowledge bases:
+1. **neuromonitoring-troubleshoot** — Accurate Neuromonitoring's 4-pillar framework, Cadwell Cascade Pro/Classic equipment, Cascade Surgical Studio 4.0 software, company protocols, QA/documentation standards, real OR case patterns, and escalation procedures.
+2. **ionm-clinical-literature** — Textbook-grounded evidence from *Neurophysiology in Neurosurgery* (Deletis et al., Elsevier 2020), *Operative Neurophysiology* (Silverstein et al., Springer 2026), *Monitoring the Nervous System* (Seubert & Balzer, Springer 2023), *Taber's Cyclopedic Medical Dictionary* (Venes, F.A. Davis 2009), and ASNM Practice Guidelines (Gertsch et al., 2018).
+
+Lead with the practical fix for operational questions. Add textbook citations [NiN-Ch.X], [OpNeuro-Ch.X], [MNS-Ch.X], [Taber's-21], or [ASNM-GL-2018] when explaining mechanisms, warning criteria, or anesthesia effects.
+
+---
+
+## EQUIPMENT PLATFORM
+- **Cadwell Cascade Pro** (primary) and **Cascade Classic**
+- Modalities: MEP (TceMEP), SSEP, frEMG, tEMG, EEG, BAER, VEP, TOF, SafeOp, Phase Reversal, Language Mapping, Motor Mapping
+- Hardware: Cascade Pro base unit, ES-IX stimulator, TCS-1/TCS-1000/TCS-4 transcranial stimulators, 16-ch amplifier pods (up to 4), Cascade Surgical Studio 4.0 software
+
+---
+
+## 4-PILLAR FRAMEWORK
+Always rule out TECHNICAL causes first before escalating:
+
+| Pillar | Core Question |
+|---|---|
+| Technical | Is the equipment working correctly? |
+| Anesthetic | Are drugs suppressing the signal? |
+| Physiological | Is the patient's condition affecting signals? |
+| Surgical | Did a surgical action cause this change? |
+
+---
+
+## OFFICIAL TROUBLESHOOTING FLOWCHART (First-Line)
+
+**AMPLIFIER:** Power connected and on? → Green light on? → Excessive noise? → Impedance?
+
+**SSEP:** Full stimulus return? → Green light on stimulator? → Electrodes making contact and plugged in? → Stimulus artifact visible on EMG or limb movement? → Impedance?
+
+**MEP:** TOF first (check paralysis) → Stimulus electrodes on scalp? → Movement visible from stimulation? → Adjust stim parameters and polarity
+
+**TOF:** Stimulating AND recording from same limb? → Full stimulus return? → Adjust parameters and polarity
+
+**NOISE:** SSEPs rejecting? → Use Noise Frequency Analyzer (right-click → Suggest Rep Rate in CSS) → Apply 60 Hz notch for EMG/EEG ONLY — NOT for SSEP/EP → Stim artifact: increase LFF to 100 Hz
+
+**BAER:** Confirm transducers clicking audibly before setup → Ipsilateral ear = "Click"; contralateral = "Masking" → Adjust parameters → Check ear for fluid or tube kinking
+
+**SOFTWARE FROZEN:** Ctrl+R or Esc → Task Manager → End Task on Cascade Surgical Studio → data auto-saves
+
+**FIRMWARE ERROR:** Update firmware → power off base unit 10+ seconds → restart in order: Base unit → Computer → Monitor → Printer. Never power on/off base unit while patient is connected.
+
+**TEAMVIEWER UNAVAILABLE:** Try USMON → Teams video → hotspot
+
+---
+
+## SIGNAL CHANGE DIFFERENTIAL (4-Pillar)
+
+- ALL channels/modalities affected → Anesthetic or Physiological — check MAP, gas level, recent bolus, temperature
+- ONE limb or side affected → Technical (wiggle electrode — does it change?) OR Surgical (correlates with maneuver?)
+- ONE modality only → SSEP stable but MEP lost = anesthetic or anterior cord [NiN-Ch.14]; MEP stable but SSEP lost = posterior cord or technical [NiN-Ch.3]
+- Gradual drift over 20+ min → Physiological (temperature, anesthesia accumulation)
+- Acute change in seconds → Surgical until proven otherwise
+
+---
+
+## ALERT / WARNING CRITERIA
+
+### SSEP [NiN-Ch.3, ASNM-GL-2018]
+- ALARM: ≥50% amplitude decrease OR ≥10% latency increase from stable baseline
+- Recommended derivations: cortical (C3'/C4'–Fz or Cz–Fz) + subcortical (Cv6–Fz)
+- Optimal anesthesia: TIVA (propofol + opioid); avoid volatile agents >0.5 MAC
+
+### Myogenic MEP (TceMEP) [NiN-Ch.2, Ch.26]
+- Standard alarm: ≥50% amplitude reduction from baseline muscle MEP
+- Accurate Neuromonitoring internal protocol: 70–80% amplitude drop, waveform simplification, or threshold increase >100V
+- Complete loss of previously stable response = critical alarm → notify surgeon immediately
+- MEPs require multipulse TES (train of 3–9 pulses, ISI 2–4 ms)
+
+### D-Wave [NiN-Ch.2, Ch.26]
+- Alarm: ≥50% amplitude reduction in epidural D-wave
+- D-wave >50% of baseline at surgery end = favorable motor outcome predictor (Kothbauer et al.)
+- More resistant to anesthesia than myogenic MEP — can be maintained under volatile agents
+
+### frEMG
+- High-frequency sustained train in nerve-at-risk muscle → alert surgeon immediately (do not wait)
+- EMG activity classification: spike (single), burst (short train), train (sustained) — sustained train is the most significant
+
+### Pedicle Screw EMG Thresholds [NiN-Ch.13]
+- Warning threshold: <10 mA (standard Calancie technique; published range 6–11 mA)
+- Very low threshold (~4 mA) = high confidence of pedicle wall breach or intracanalicular placement
+- Thoracic spine: medially placed screws risk spinal cord injury; 10 mA threshold still standard
+- Chronically compressed nerve roots may require >20 mA — interpret with caution
+- Must verify full TOF reversal before tEMG testing
+
+### BAER/ABR [NiN-Ch.5, Ch.33]
+- Alarm: Wave V latency increase >1.0 ms OR amplitude reduction >50%
+- Used in: acoustic neuroma resection, MVD, posterior fossa surgery
+- Position change (lateral decubitus) may cause BAER shifts — re-baseline after positioning
+
+### VEP [NiN-Ch.4]
+- Alarm: ≥50% amplitude reduction N1–P2 peak-to-peak
+- Indication: parasellar tumors, optic pathway surgery, ICA aneurysm clipping
+- Requires TIVA — volatile agents markedly suppress VEP
+- ERG recorded simultaneously to confirm adequate retinal stimulation
+
+### Corticobulbar MEP (CoMEP) [NiN-Ch.10]
+- Monitors CN VII (facial), X (vagal), XII (hypoglossal) motor pathways
+- Recorded from orbicularis oris, vocalis, genioglossus muscles
+- Warning: ≥50% amplitude reduction in facial muscle CoMEP
+- Requires TIVA
+
+---
+
+## EMG CLASSIFICATION & ACTION
+
+| Activity Type | Description | Required Action |
+|---|---|---|
+| Spike | Single discharge | Note; monitor |
+| Burst | Short train, self-limited | Note; assess context |
+| Train (sustained) | High-frequency, continuous | Alert surgeon immediately — do not wait |
+
+- Sustained train in nerve-at-risk muscle = highest urgency, alert surgeon immediately
+- Pedicle screw tEMG: response <10 mA = possible wall breach; ~4 mA = high confidence breach [NiN-Ch.13]
+- Must verify full TOF reversal (4/4) before tEMG stimulation
+- frEMG: LFF 10–100 Hz, HFF 3000–5000 Hz, gain 200 µV/div
+
+---
+
+## EVENT LOG TEMPLATES
+
+### Signal Change Note
+[TIME] [MODALITY] [SIDE/LEVEL]: [what changed — amplitude/latency/loss]. Surgical context: [what was happening]. Steps taken: [technical checks, anesthesia query, surgeon notification]. Outcome: [resolved/persists/monitoring].
+
+### Technical Issue Note
+[TIME] Technical issue identified: [description]. Steps taken: [actions]. Resolution: [outcome]. Monitoring resumed at [TIME].
+
+### Surgeon Alert Note
+[TIME] Surgeon [NAME] notified of [MODALITY] change: [threshold met — e.g., >50% amplitude drop]. Surgical response: [pause/irrigation/repositioning/other]. Signal [recovered/persists] at [TIME].
+
+### Baseline Note
+[TIME] Baseline acquisition [delayed/abnormal] due to [reason]. Issue addressed: [steps]. Acceptable baseline obtained at [TIME].
+
+### Post-Case Closing Summary
+Case complete [TIME]. Modalities monitored: [list]. Baseline quality: [adequate/challenging — reason]. Intraoperative events: [none/describe]. Final signal status at closure: [stable/changed]. Surgeon notified: [yes/no, details].
+
+---
+
+## KEY PARAMETERS
+
+### SSEP
+- Stim: 25–50 mA (up to 100 mA), 200–400 µs, cathode proximal
+- Recording: LFF 30–50 Hz, HFF 250–500 Hz, gain 10–20 µV/div
+- UE epoch 40–50 ms, LE epoch 75–100 ms
+
+### MEP (TceMEP)
+- Electrodes: C1–C2 preferred for LE; C3–C4 for UE
+- Stim: up to 1000 V, **pulse width 75 µs** (default — do not reduce), ISI 1.0–4.0 ms, **2–9 pulses** (increase toward 9 for difficult LE responses)
+- If LE MEPs absent: move electrodes MORE LATERAL; increase ISI to 3–4 ms; increase pulse count toward 9; try up to 670 V
+- MEP stim artifact → increase LFF to 100 Hz
+
+### EMG
+- frEMG: LFF 10–100 Hz, HFF 3000–5000 Hz, gain 200 µV/div
+- tEMG stim limits: cranial nerves up to 4 mA; spinal/peripheral up to 10 mA; pedicle screws up to 20 mA
+
+### BAER
+- Confirm transducers clicking audibly before patient setup
+- Ipsilateral ear = "Click"; contralateral ear = "Masking"
+
+### TOF
+- 4/4 with TOF% >90% = no meaningful neuromuscular block; MEP absence is NOT due to paralysis
+- 0–1/4 = deep block; MEPs will be absent — do not interpret as neurological
+- TOF must be recorded from the FOOT for LE (last to recover from NMB)
+- If feet twitching from SSEP stim and TOF present → paralysis is NOT the cause of absent LE MEPs
+
+---
+
+## ANESTHESIA EFFECTS [NiN-Ch.40 (Sloan, Koht); MNS-Ch.17 (Rabai, Sloan, Seubert)]
+
+| Modality | Volatile ≤0.5 MAC | Volatile >1 MAC | N₂O | NMB (full) | Propofol TIVA | Etomidate | Ketamine |
+|---|---|---|---|---|---|---|---|
+| Myogenic MEP | ↓↓ variable | abolished | ↓↓ | abolishes | ✓ preferred | ↑ enhances | ↑ enhances |
+| D-wave | ↓ mild | ↓ mild | ↓ mild | no effect | ✓ preferred | ↑ mild | minimal |
+| SSEP cortical | ↓↓ | unobtainable | ↓↓ synergistic | no effect | ✓ preferred | ↑ enhances | ↑ mild |
+| SSEP subcortical | ↓ mild | ↓ mild | ↓ mild | no effect | ✓ preferred | minimal | minimal |
+| BAER | ↓ mild | latency shift | minimal | no effect | ✓ preferred | minimal | minimal |
+| CoMEP | ↓↓↓ | abolished | ↓↓ | abolishes | ✓ preferred | ↑ | ↑ |
+| VEP | ↓↓↓ | abolished | ↓↓ | no effect | ✓ preferred | ↑ | minimal |
+| Free-run EMG | no effect | no effect | no effect | abolishes | ✓ preferred | no effect | no effect |
+
+Key points:
+- N₂O + volatile = synergistic (not merely additive) depression of cortical SSEP [MNS-Ch.17]
+- Etomidate and ketamine are the only agents that enhance evoked responses — useful as TIVA adjuncts for difficult baselines
+- TIVA (propofol + opioid) strongly preferred for MEP, CoMEP, and VEP monitoring [NiN-Ch.2, NiN-Ch.10]
+- Volatile agents: target ≤0.5 MAC for MEP monitoring; SSEPs more tolerant at ≤1.0 MAC
+
+---
+
+## COMMON REAL-CASE PATTERNS (from Accurate remote support log)
+- LE MEPs absent after all parameters tried → move stim electrodes MORE LATERAL
+- MEP biofeedback/artifact → raise LFF to 100 Hz
+- Bad quadripolar cable → complete MEP failure → swap cable
+- TCS4 contaminated with iodine → unreliable despite high voltage; low current at 600 V = hardware issue
+- FPz causing all SSEPs to reject → replace electrode, move to different input, move power outlet
+- Pod sitting on bed surface → noise → move pod OFF bed
+- SSEP stim lead snapped by C-arm (even if external wire looks intact) → replace sticky pads
+- SafeOp + Cascade tandem → run SafeOp electrode test and collect SafeOp data FIRST before Cascade
+- CoMEP response after second train = peripheral nerve was stimulated → reduce voltage
+- TOF 2/4 from hands but 0/4 from feet → LE last to recover from NMB → cannot assess LE MEPs yet
+- Crossover responses on craniotomy → reduce voltage, check latency offset (~2 ms), adjust montage
+
+---
+
+## CONNECTIVITY (USMON)
+- Both systems must be on same network (LAN or VPN)
+- Edit → System Setup → Edit Customer Options → Remote Server box checked
+- Versions must match on Cascade and Reader
+- DCOM errors: run Cascade DCOM Settings.reg and DCOM My Computer.reg files
+
+---
+
+## POWER-ON ORDER (Critical)
+1. Base unit → 2. Computer → 3. Monitor → 4. Printer
+Never power on/off base unit while patient is connected.
+
+---
+
+## ESCALATION
+
+### Accurate Neuromonitoring Remote Support (IONM issues)
+- Email: remotesupport@accurateiom.com
+- Online form (preferred): https://forms.office.com/r/uvamqrpWiU — include modality, brief description, steps already tried
+- Submit directly from your laptop via the Authorinet AdVantage RMM app in your system tray (FOR LAPTOP/IT ISSUES ONLY — see below):
+  1. Look in the bottom-right system tray (expand hidden icons with the ^ arrow)
+  2. Find the Authorinet AdVantage RMM icon (blue wave/heartbeat icon)
+  3. Right-click it → select "Request support" or "Take screenshot and request support"
+  4. Fill in: Summary of issue, full description, urgency level, who is impacted
+  5. Optionally add your name, email, phone, and up to 3 screenshots (max 5 MB each)
+  6. Click Submit
+
+### IT Support (laptop/computer/network issues ONLY — Authorinet Consulting)
+- Contact Authorinet ONLY when the issue is laptop hardware, Windows OS, network connectivity, or other IT infrastructure — NOT for Cadwell software or IONM signal issues
+- Email: tech@authorinet.com | Phone: 201-897-8874
+- Or use the RMM tray icon process above
+
+### Cadwell Customer Support (hardware/software warranty issues)
+- Phone: 800-245-3001 (Mon–Fri, 6:30 AM–5 PM PST)
+
+### Case assignments / scheduling
+- www.usmon.com
+- After-hours scheduling: 973-882-3456 (5:00 PM – 7:00 AM)
+
+**Alert surgeon IMMEDIATELY (do not wait for remote support):**
+- ≥50% SSEP amplitude drop or ≥10% latency increase
+- Loss of MEP response that was previously present and stable
+- New sustained or high-frequency EMG burst in a nerve-at-risk muscle
+- Any change coinciding with a specific surgical maneuver
+
+---
+
+## CLINICAL LITERATURE CITATIONS
+- [NiN-Ch.X] = *Neurophysiology in Neurosurgery*, Deletis V, Shils JL, Sala F, Seidel K (Eds.), Elsevier, 2nd Ed. 2020
+- [OpNeuro-Ch.X] = *Operative Neurophysiology*, Silverstein JW, D'Amico RS, Ellis JA (Eds.), Springer Nature, 1st Ed. 2026
+- [MNS-Ch.X] = *Monitoring the Nervous System*, Seubert CN, Balzer JR (Eds.), Springer Nature, 3rd Ed. 2023
+- [Taber's-21] = *Taber's Cyclopedic Medical Dictionary*, 21st Ed., Venes D (Ed.), F.A. Davis Company, 2009
+- [ASNM-GL-2018] = Gertsch JH et al., ASNM Practice Guidelines, *J Clin Monit Comput*, 2018
+
+**Book strengths:**
+- NiN: neurophysiology foundations, D-wave/I-wave physiology, surgical outcome correlations — best for mechanistic questions
+- OpNeuro: practical parameters, electrode montages, surgical context — best for setup questions
+- MNS: anesthesia pharmacology depth, communication frameworks — best for drug-effect questions
+- Taber's: plain-language medical/anatomical definitions — best for foundational terminology
+- ASNM-GL-2018: scope of practice, credentialing, documentation requirements, concurrent case limits, telemedicine standards
+
+---
+
+## RESPONSE STYLE
+- Be direct and clinical — this is an OR environment, not a classroom
+- Lead with the most likely fix for the described scenario
+- Use numbered steps for action items
+- Flag URGENT items clearly when patient safety is at stake
+- Keep responses focused and scannable
+- When relevant, mention which pillar(s) to consider
+- Add textbook citations [NiN-Ch.X] when explaining mechanisms, warning criteria, or anesthesia effects
+- End with escalation path if self-troubleshooting fails
+- Do NOT over-caveat or add excessive disclaimers — techs need fast, actionable guidance`;
+
+// ── State ───────────────────────────────────────────────────────────────────
+let messages = [];
+
+let isLoading = false;
+
+const messagesEl = document.getElementById('messages');
+const inputEl    = document.getElementById('user-input');
+const sendBtn    = document.getElementById('send-btn');
+const welcomeEl  = document.getElementById('welcome');
+
+// ── Guided flow definitions ─────────────────────────────────────────────────
+const GUIDED_FLOWS = {
+  mep: {
+    question: 'What is happening with your MEPs?',
+    chips: [
+      { label: 'No responses at all (absent)',           prompt: 'My MEPs are completely absent. TOF is 4/4 and I have confirmed stim is getting through. Pulse width is set to 75 µs. Walk me through the Cadwell Cascade-specific steps to recover LE and UE MEPs.' },
+      { label: 'Responses dropped / degraded',           prompt: 'My MEPs were present but have now dropped significantly during the case. They were previously stable. What should I do on the Cadwell Cascade to assess whether this is technical, anesthetic, or surgical?' },
+      { label: 'Stim artifact / biofeedback in channels',prompt: 'I am seeing stim artifact or biofeedback contaminating my MEP recording channels on Cadwell Cascade. How do I fix it?' },
+      { label: 'UE present but LE absent',               prompt: 'Upper extremity MEPs are present but lower extremity MEPs are absent on my Cadwell Cascade. TOF is 4/4. What are the specific steps to recover LE MEPs, including electrode position, ISI, pulse count, and voltage?' },
+    ]
+  },
+  ssep: {
+    question: 'What is the SSEP problem?',
+    chips: [
+      { label: 'Rejecting on all channels',     prompt: 'SSEPs are rejecting on all channels on my Cadwell Cascade. Walk me through the Cascade-specific steps: noise analyzer, reject settings, impedance, and electrode checks.' },
+      { label: 'Rejecting on specific channels', prompt: 'SSEPs are rejecting on specific channels only (not all) on my Cadwell Cascade. What should I check on the affected channels specifically?' },
+      { label: 'Amplitude dropped / signal lost',prompt: 'SSEP amplitude has dropped significantly or disappeared on one or more channels during the case. MEPs are still present. What does this pattern indicate and what do I check first on Cadwell Cascade?' },
+      { label: 'Noisy / won\'t average clean',   prompt: 'My SSEPs are extremely noisy and not averaging clean on Cadwell Cascade. Impedances are OK. Walk me through noise troubleshooting steps specific to CSS 4.0.' },
+    ]
+  },
+  signal: {
+    question: 'What best describes the signal change?',
+    chips: [
+      { label: 'All modalities affected at once',          prompt: 'All of my modalities (SSEPs and MEPs) changed at the same time during the case. Walk me through the 4-pillar differential — what are the most likely causes and what should I check first?' },
+      { label: 'One side / one limb only',                 prompt: 'Signal change is isolated to one side or one limb only. The other side is stable. What does this localization suggest and what should I do first on Cadwell Cascade?' },
+      { label: 'SSEPs dropped but MEPs still present',     prompt: 'SSEPs have dropped significantly but MEPs are still present. What does this dissociation suggest clinically, and what should I do?' },
+      { label: 'MEPs lost but SSEPs still present',        prompt: 'MEPs are lost but SSEPs are still present and stable. What does this dissociation suggest clinically, and what should I check first — anesthetic, technical, or surgical?' },
+      { label: 'Gradual drift over 20+ minutes',           prompt: 'My signals have been gradually drifting over more than 20 minutes rather than an acute change. What is the most likely cause and what should I address?' },
+    ]
+  },
+  tof: {
+    question: 'What is the TOF problem?',
+    chips: [
+      { label: 'Not getting any TOF response',      prompt: 'I am not getting any TOF response on my Cadwell Cascade ES-IX stimulator. Walk me through Cadwell-specific steps to troubleshoot: electrode placement, output mode, connections.' },
+      { label: 'TOF shows deep block (0–1/4)',       prompt: 'TOF is showing 0 or 1 out of 4. How does this affect my ability to interpret MEPs, and what should I communicate to anesthesia?' },
+      { label: 'TOF hands OK but feet still blocked',prompt: 'TOF is 4/4 at the hands but still 0/4 at the feet. Can I trust my lower extremity MEPs? Explain why and what to do.' },
+      { label: 'TOF result looks inconsistent',     prompt: 'My TOF readings look inconsistent or I am not sure if I am getting a true TOF response. Walk me through how to verify I am stimulating and recording from the same limb correctly on Cadwell Cascade.' },
+    ]
+  },
+  noise: {
+    question: 'What kind of noise or artifact?',
+    chips: [
+      { label: '60 Hz electrical noise',         prompt: 'I have 60 Hz electrical noise on my Cadwell Cascade channels. What are the CSS 4.0-specific steps: notch filter settings, which modalities it applies to, rep rate suggestion tool, and pod placement?' },
+      { label: 'Cautery / ESU artifact',         prompt: 'I am getting cautery or ESU artifact on my Cadwell Cascade during the case. What CSS 4.0 tools and settings help with this — cautery detector, rep rate, reject settings?' },
+      { label: 'SSEPs rejecting from one channel',prompt: 'One specific SSEP channel keeps rejecting while others are fine. I suspect an electrode or pod issue. Walk me through the Cascade-specific steps to isolate and fix it.' },
+      { label: 'Baseline is noisy / cannot average',prompt: 'My baseline signals are noisy and I cannot get a clean average. Walk me through a full noise workup on Cadwell Cascade CSS 4.0 — noise analyzer, rep rate, reject, pod position, impedance.' },
+    ]
+  },
+  software: {
+    question: 'What is the CSS software issue?',
+    chips: [
+      { label: 'Software frozen / cannot click',   prompt: 'Cascade Surgical Studio 4.0 is frozen and I cannot click anything. What are the exact steps to recover without losing my case data?' },
+      { label: 'Firmware error on startup',        prompt: 'I am getting a firmware error when starting up the Cadwell Cascade. What are the exact steps to resolve it, including power cycle order?' },
+      { label: 'Need to add a channel mid-case',   prompt: 'I need to add a new channel or mode mid-case in Cascade Surgical Studio 4.0. Walk me through the exact steps.' },
+      { label: 'Cursor alerts / 50% threshold',    prompt: 'How do I set up cursor alerts for the 50% amplitude and 10% latency warning thresholds in Cascade Surgical Studio 4.0?' },
+      { label: 'Report generation help',           prompt: 'I need help generating the final report in Cascade Surgical Studio 4.0. Walk me through the report generation process.' },
+    ]
+  },
+  connectivity: {
+    question: 'What is the connectivity issue?',
+    chips: [
+      { label: 'TeamViewer not working',           prompt: 'TeamViewer is not working and I cannot connect to remote support. What are the alternatives — USMON, Teams video, hotspot — and how do I set each one up?' },
+      { label: 'USMON not connecting',             prompt: 'USMON is not connecting. Walk me through the Cadwell Cascade setup for USMON: System Setup, Remote Server checkbox, version matching, and DCOM error fixes.' },
+      { label: 'DCOM errors in Cascade',           prompt: 'I am getting DCOM errors in Cascade when trying to connect to USMON. What are the exact steps to fix them?' },
+    ]
+  },
+  escalation: {
+    question: 'What type of support do you need?',
+    chips: [
+      { label: 'How to submit a support request',  prompt: 'How do I submit a remote support request to Accurate Neuromonitoring? Include the online form link, the Authorinet RMM tray icon method, and the email option.' },
+      { label: 'Who to contact for what issue',    prompt: 'Give me the full escalation contact list. Who do I contact for: (1) IONM remote support, (2) laptop or computer IT issues specifically — clarify that Authorinet is only for laptop/IT problems not Cadwell or IONM issues, (3) Cadwell hardware/software issues, (4) case scheduling. Include the correct contact method for each.' },
+      { label: 'When to alert the surgeon',        prompt: 'What are the exact criteria that require me to immediately alert the surgeon — do not wait for remote support? List the specific signal change thresholds.' },
+    ]
+  },
+  eventlog: {
+    question: 'What type of event log note do you need?',
+    chips: [
+      { label: 'Signal change event',        prompt: 'Help me write an event log note for a signal change that occurred during the case. Ask me for the details you need: modality, timing, what changed, surgical context, steps taken, outcome.' },
+      { label: 'Equipment or technical issue',prompt: 'Help me write an event log note for a technical or equipment issue that occurred during monitoring. Ask me for the relevant details.' },
+      { label: 'Alert to surgeon',           prompt: 'Help me write an event log note documenting that I alerted the surgeon during the case. Ask me what information you need to write it accurately.' },
+      { label: 'Baseline anomaly or delay',  prompt: 'Help me write an event log note for a baseline acquisition issue or delayed start. Ask me for the details.' },
+      { label: 'Post-case closing summary',  prompt: 'Help me write a closing post-case event log summary. Ask me for the relevant case details: procedure type, modalities monitored, baseline quality, any events or changes during the case, and the final outcome at case close.' },
+    ]
+  },
+  baer: {
+    question: 'What is the BAER issue?',
+    chips: [
+      { label: 'No waveforms / transducers not working', prompt: 'I am not getting any BAER waveforms. Walk me through the Cadwell Cascade setup checklist: transducer verification, ipsilateral vs contralateral assignment (Click vs Masking), electrode placement, and stimulus parameters.' },
+      { label: 'Wave V latency shift or loss',           prompt: 'My BAER Wave V has shifted in latency or decreased in amplitude during the case. What does this change indicate clinically, and what should I check first — technical, surgical, or positioning?' },
+      { label: 'Noisy baseline / cannot average',        prompt: 'My BAER baseline is noisy and not averaging cleanly on Cadwell Cascade. Walk me through the noise troubleshooting steps specific to BAER: electrode impedance, transducer fit, masking level, reject settings.' },
+      { label: 'BAER alarm criteria',                    prompt: 'What are the exact BAER alarm criteria I should be using? Include Wave V latency and amplitude thresholds, and cite the clinical literature.' },
+    ]
+  },
+  emg: {
+    question: 'What is the EMG situation?',
+    chips: [
+      { label: 'Sustained train in nerve-at-risk muscle', prompt: 'I am seeing a sustained high-frequency EMG train in a nerve-at-risk muscle. What does this mean, what should I do immediately, and when do I alert the surgeon? Include the EMG activity classification.' },
+      { label: 'Pedicle screw threshold question',        prompt: 'I need help interpreting my pedicle screw tEMG thresholds. Walk me through the Calancie threshold criteria, what values indicate a possible breach, and how thoracic spine cases differ. Cite [NiN-Ch.13].' },
+      { label: 'frEMG baseline is noisy / artifact',      prompt: 'My free-run EMG channels are noisy or showing artifact at baseline. Walk me through frEMG troubleshooting on Cadwell Cascade: LFF/HFF settings, gain, electrode impedance, pod placement, cautery interference.' },
+      { label: 'Difference between spike / burst / train',prompt: 'Explain the clinical classification of EMG activity — spike, burst, and train — and what action each requires from me in the OR.' },
+    ]
+  },
+  anesthesia: {
+    question: 'What anesthesia question do you have?',
+    chips: [
+      { label: 'Drug effects on MEPs',           prompt: 'Explain how different anesthetic agents affect MEPs — volatile agents, propofol TIVA, N2O, NMBs, ketamine, etomidate. Use specific MAC thresholds and cite the clinical literature.' },
+      { label: 'Drug effects on SSEPs',          prompt: 'Explain how different anesthetic agents affect SSEPs — volatile agents, propofol, N2O, NMBs. Include specific thresholds and cite the literature [NiN-Ch.3, MNS-Ch.17].' },
+      { label: 'Is this a bolus effect?',        prompt: 'I had a sudden signal change and I suspect a propofol or opioid bolus from anesthesia. How do I distinguish a bolus effect from a true neurological or surgical cause? What is the expected time course?' },
+      { label: 'How to talk to anesthesia',      prompt: 'Give me a script or template for how to communicate to anesthesia that their drug regimen may be affecting my signals. Include specific language for asking them to reduce or switch agents.' },
+      { label: 'TIVA vs volatile recommendations',prompt: 'When should I push for TIVA versus tolerating a volatile anesthetic? Give me the specific modality-by-modality recommendations and how to justify it to anesthesia.' },
+    ]
+  },
+  parameters: {
+    question: 'Which parameters do you need?',
+    chips: [
+      { label: 'SSEP stimulation & recording params', prompt: 'Give me the complete SSEP stimulation and recording parameters for Cadwell Cascade: stim intensity, pulse width, rate, epoch, LFF, HFF, gain for upper and lower extremity.' },
+      { label: 'MEP / TceMEP parameters',             prompt: 'Give me the complete TceMEP parameters for Cadwell Cascade: electrode placement, voltage range, pulse width (emphasize 75 µs), ISI, pulse count including up to 9 pulses, and what to adjust first when responses are absent.' },
+      { label: 'EMG parameters (frEMG / tEMG)',        prompt: 'Give me the frEMG and tEMG parameters for Cadwell Cascade: LFF, HFF, gain, and the stimulation limits for cranial nerves, spinal/peripheral, and pedicle screw testing.' },
+      { label: 'BAER parameters',                     prompt: 'Give me the BAER parameters and setup checklist for Cadwell Cascade, including transducer verification, click vs masking setup, and alarm criteria.' },
+    ]
+  }
+};
+
+// ── UI helpers ──────────────────────────────────────────────────────────────
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  sendBtn.classList.toggle('active', inputEl.value.trim().length > 0);
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+function sendQuick(text) {
+  inputEl.value = text;
+  sendBtn.classList.add('active');
+  sendMessage();
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function scrollToMessageTop(el) {
+  // Wait for layout to settle, then scroll so the top of the message is visible
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const containerRect = messagesEl.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const relativeTop = elRect.top - containerRect.top;
+      messagesEl.scrollTop = messagesEl.scrollTop + relativeTop - 8;
+    });
+  });
+}
+
+// ── Guided flow ─────────────────────────────────────────────────────────────
+function startGuided(topic) {
+  const flow = GUIDED_FLOWS[topic];
+  if (!flow) return;
+
+  if (welcomeEl) welcomeEl.style.display = 'none';
+
+  const avatarSvg = `<img src="https://emoji.slack-edge.com/T9R217ZMM/squirrel/465f40c0e0.png" style="width:18px;height:18px;object-fit:contain;border-radius:3px;" alt="Sherlock Ohms" />`;
+
+  // Build outer message structure
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.innerHTML = `
+    <div class="msg-avatar">${avatarSvg}</div>
+    <div class="msg-body">
+      <div class="msg-label">Sherlock Ohms</div>
+      <div class="msg-bubble">
+        <div class="followup-wrap">
+          <div class="followup-question">${flow.question}</div>
+          <div class="followup-chips" id="chips-${topic}"></div>
+        </div>
+      </div>
+    </div>`;
+
+  messagesEl.appendChild(div);
+
+  // Attach chips with proper JS event listeners (no inline onclick / JSON in attributes)
+  const chipsContainer = div.querySelector('.followup-chips');
+  flow.chips.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'followup-chip';
+    btn.textContent = c.label;
+    const prompt = c.prompt; // closure capture
+    btn.addEventListener('click', function() {
+      // Disable all chips in this bubble
+      chipsContainer.querySelectorAll('.followup-chip').forEach(b => b.classList.add('used'));
+      // Show short user label in chat
+      addMessage('user', c.label);
+      // Push full prompt to message history and call API
+      messages.push({ role: 'user', content: prompt });
+      callAPI();
+    });
+    chipsContainer.appendChild(btn);
+  });
+
+  scrollToBottom();
+}
+
+// ── Message rendering ───────────────────────────────────────────────────────
+function addMessage(role, content, isTyping = false) {
+  if (welcomeEl) welcomeEl.style.display = 'none';
+
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+
+  const avatarSvg = role === 'user'
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7"/></svg>`
+    : `<img src="https://emoji.slack-edge.com/T9R217ZMM/squirrel/465f40c0e0.png" style="width:18px;height:18px;object-fit:contain;border-radius:3px;" alt="Sherlock Ohms" />`;
+
+  const label = role === 'user' ? 'You' : 'Sherlock Ohms';
+
+  if (isTyping) {
+    div.innerHTML = `
+      <div class="msg-avatar">${avatarSvg}</div>
+      <div class="msg-body">
+        <div class="msg-label">${label}</div>
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>`;
+    div.id = 'typing-indicator';
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.innerHTML = formatMessage(content);
+
+    div.innerHTML = `
+      <div class="msg-avatar">${avatarSvg}</div>
+      <div class="msg-body">
+        <div class="msg-label">${label}</div>
+      </div>`;
+    div.querySelector('.msg-body').appendChild(bubble);
+  }
+
+  messagesEl.appendChild(div);
+  if (role === 'assistant' && !isTyping) {
+    // Add copy-to-clipboard button
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(content).then(() => {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(() => {
+          copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+        }, 2000);
+      });
+    });
+    div.querySelector('.msg-body').appendChild(copyBtn);
+    // Scroll to top of this message so user reads from the beginning
+    scrollToMessageTop(div);
+  } else {
+    scrollToBottom();
+  }
+  return div;
+}
+
+function parseMarkdownTables(text) {
+  // Match blocks of lines that look like markdown tables (contain | chars)
+  const lines = text.split('\n');
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Detect header row: | ... | ... |
+    if (/^\|.+\|/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|/.test(lines[i + 1])) {
+      // Collect all table rows
+      const tableLines = [];
+      while (i < lines.length && /^\|/.test(lines[i])) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      // Build HTML table
+      let html = '<table class="md-table"><thead><tr>';
+      const headers = tableLines[0].split('|').filter(s => s.trim() !== '');
+      headers.forEach(h => { html += `<th>${h.trim()}</th>`; });
+      html += '</tr></thead><tbody>';
+      for (let r = 2; r < tableLines.length; r++) {
+        const cells = tableLines[r].split('|').filter(s => s.trim() !== '');
+        html += '<tr>';
+        cells.forEach(c => { html += `<td>${c.trim()}</td>`; });
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      out.push(html);
+    } else {
+      out.push(line);
+      i++;
+    }
+  }
+  return out.join('\n');
+}
+
+function formatMessage(text) {
+  // Parse markdown tables first (before line splitting)
+  text = parseMarkdownTables(text);
+
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  text = text.replace(/🚨(.*?)(?=\n|$)/g, '<div class="alert-box">⚠ $1</div>');
+  text = text.replace(/⚠️(.*?)(?=\n|$)/g, '<div class="alert-box">⚠ $1</div>');
+
+  const lines = text.split('\n');
+  let result = '';
+  let inList = false;
+  let stepCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const numberedMatch = line.match(/^(\d+)\.\s+(.*)/);
+    const bulletMatch   = line.match(/^[-•]\s+(.*)/);
+    const h2Match       = line.match(/^##\s+(.*)/);
+    const h3Match       = line.match(/^###\s+(.*)/);
+
+    if (h3Match) {
+      if (inList) { result += inList === 'ol' ? '</ol>' : '</ul>'; inList = false; stepCount = 0; }
+      result += `<div class="md-h3">${h3Match[1]}</div>`;
+    } else if (h2Match) {
+      if (inList) { result += inList === 'ol' ? '</ol>' : '</ul>'; inList = false; stepCount = 0; }
+      result += `<div class="md-h2">${h2Match[1]}</div>`;
+    } else if (numberedMatch) {
+      if (!inList) { result += '<ol class="step-list">'; inList = 'ol'; }
+      stepCount++;
+      result += `<li><span class="step-num">${numberedMatch[1]}</span><span>${numberedMatch[2]}</span></li>`;
+    } else if (bulletMatch) {
+      if (inList === 'ol') { result += '</ol>'; inList = false; }
+      if (!inList) { result += '<ul class="step-list">'; inList = 'ul'; }
+      result += `<li><span class="step-num">→</span><span>${bulletMatch[1]}</span></li>`;
+    } else {
+      if (inList) { result += inList === 'ol' ? '</ol>' : '</ul>'; inList = false; stepCount = 0; }
+      if (line.trim() === '') {
+        result += '<br>';
+      } else if (line.includes('accurateiom.com') || line.includes('authorinet.com') || line.includes('800-245-3001') || line.includes('forms.office.com')) {
+        result += `<div class="contact-chips">`;
+        line.split('|').map(s => s.trim()).forEach(c => {
+          if (c) result += `<span class="contact-chip">${c}</span>`;
+        });
+        result += `</div>`;
+      } else if (line.startsWith('<table') || line.startsWith('</table') || 
+                 line.startsWith('<thead') || line.startsWith('<tbody') ||
+                 line.startsWith('<tr') || line.startsWith('<th') || 
+                 line.startsWith('<td') || line.startsWith('</tr') ||
+                 line.startsWith('</thead') || line.startsWith('</tbody')) {
+        result += line;  // already-rendered HTML — pass through verbatim
+      } else {
+        result += '<p style="margin: 4px 0;">' + line + '</p>';
+      }
+    }
+  }
+
+  if (inList) result += inList === 'ol' ? '</ol>' : '</ul>';
+  result = result.replace(/<p style="margin: 4px 0;"><\/p>/g, '');
+  result = result.replace(/(<br>){3,}/g, '<br><br>');
+  return result;
+}
+
+// ── API calls ───────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || isLoading) return;
+
+  sendBtn.classList.remove('active');
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+
+  addMessage('user', text);
+  messages.push({ role: 'user', content: text });
+
+  await callAPI();
+}
+
+async function callAPI() {
+  isLoading = true;
+  const typingEl = addMessage('assistant', '', true);
+
+  // Rolling window — keep last 20 messages to avoid context overflow
+  const MAX_MESSAGES = 20;
+  const windowed = messages.length > MAX_MESSAGES
+    ? messages.slice(messages.length - MAX_MESSAGES)
+    : messages;
+
+  try {
+    const response = await fetch('https://func-ionm-proxy.azurewebsites.net/api/proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2048,
+        system: SYSTEM_PROMPT,
+        messages: windowed
+      })
+    });
+
+    const data = await response.json();
+    typingEl.remove();
+
+    if (data.content && data.content[0] && data.content[0].text) {
+      const reply = data.content[0].text;
+      messages.push({ role: 'assistant', content: reply });
+      addMessage('assistant', reply);
+    } else if (data.error) {
+      // Surface the actual API error so it's diagnosable
+      const errMsg = data.error.message || JSON.stringify(data.error);
+      addMessage('assistant', `API error: ${errMsg}\n\nFor support, email **remotesupport@accurateiom.com** or submit a request at [forms.office.com/r/uvamqrpWiU](https://forms.office.com/r/uvamqrpWiU).`);
+    } else {
+      addMessage('assistant', 'Unexpected response from API. Check your connection and try again.');
+      console.error('Unexpected API response:', data);
+    }
+  } catch (err) {
+    typingEl.remove();
+    addMessage('assistant', `Connection error: ${err.message}. Submit a request at **forms.office.com/r/uvamqrpWiU** or email **remotesupport@accurateiom.com**`);
+    console.error('Fetch error:', err);
+  }
+
+  isLoading = false;
+  // Note: scrolling is handled inside addMessage (top-of-message for assistant replies)
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  inputEl.focus();
+});
+
+function clearChat() {
+  messages = [];
+  messagesEl.innerHTML = '';
+  const welcome = document.createElement('div');
+  welcome.id = 'welcome';
+  welcome.className = 'welcome';
+  welcome.innerHTML = `
+    <div class="welcome-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5">
+        <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+        <path d="M12 2a10 10 0 0 1 10 10"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </div>
+    <h2>IONM Troubleshooting Assistant</h2>
+    <p>Type your issue, or tap a topic above \u2014 the assistant will ask one quick follow-up to zero in on your exact situation.</p>
+    <div class="welcome-cards">
+      <div class="welcome-card" onclick="startGuided('mep')">
+        <div class="welcome-card-tag" style="color:#f85149">🔴 MEP</div>
+        <div class="welcome-card-label">MEP issue — guide me to the fix</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('signal')">
+        <div class="welcome-card-tag" style="color:#f85149">🔴 Signal</div>
+        <div class="welcome-card-label">Signal changed during the case</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('ssep')">
+        <div class="welcome-card-tag">SSEP</div>
+        <div class="welcome-card-label">SSEP problem — narrow it down</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('emg')">
+        <div class="welcome-card-tag" style="color:#f85149">🔴 EMG</div>
+        <div class="welcome-card-label">frEMG burst or train activity</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('tof')">
+        <div class="welcome-card-tag">TOF</div>
+        <div class="welcome-card-label">TOF issue or block interpretation</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('noise')">
+        <div class="welcome-card-tag">Noise</div>
+        <div class="welcome-card-label">Noise or artifact troubleshooting</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('baer')">
+        <div class="welcome-card-tag">BAER</div>
+        <div class="welcome-card-label">BAER / ABR issue or setup</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('anesthesia')">
+        <div class="welcome-card-tag">📚 Literature</div>
+        <div class="welcome-card-label">Anesthesia effects on my signals</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('parameters')">
+        <div class="welcome-card-tag">Parameters</div>
+        <div class="welcome-card-label">Stim &amp; recording parameters</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('software')">
+        <div class="welcome-card-tag">CSS Software</div>
+        <div class="welcome-card-label">Cascade Surgical Studio issue</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('eventlog')">
+        <div class="welcome-card-tag">Event Log</div>
+        <div class="welcome-card-label">Help me write an event log note</div>
+      </div>
+      <div class="welcome-card" onclick="startGuided('escalation')">
+        <div class="welcome-card-tag">Escalation</div>
+        <div class="welcome-card-label">How to request remote support</div>
+      </div>
+    </div>`;
+  messagesEl.appendChild(welcome);
+  welcomeEl = welcome;
+}
+</script>
+</body>
+</html>
